@@ -9,6 +9,8 @@ import InfoPage from './views/InfoPage.vue'
 import Profile from './views/Profile.vue'
 import Learn from './views/Learn.vue'
 import Lesson from './views/Lesson.vue'
+import Cart from './views/Cart.vue'
+import Checkout from './views/Checkout.vue'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 
 const router = createRouter({
@@ -17,6 +19,8 @@ const router = createRouter({
   routes: [
     { path: '/', component: Home },
     { path: '/shop', component: ProductBrowser },
+    { path: '/cart', component: Cart },
+    { path: '/checkout', component: Checkout, meta: { auth: true } },
     { path: '/login', component: Login },
     { path: '/profile', component: Profile, meta: { auth: true } },
     { path: '/profile/products', component: ProductBrowser, props: { mine: true }, meta: { auth: true } },
@@ -29,9 +33,9 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   if (!to.meta.auth) return true
-  if (!isSupabaseConfigured) return '/login'
+  if (!isSupabaseConfigured) return { path: '/login', query: { redirect: to.fullPath } }
   const { data } = await supabase.auth.getSession()
-  return data.session ? true : '/login'
+  return data.session ? true : { path: '/login', query: { redirect: to.fullPath } }
 })
 
 createApp(App).use(router).mount('#app')

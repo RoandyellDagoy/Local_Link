@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { user } from '../lib/auth'
+import { addToCart } from '../lib/cart'
+import { isSeller, upgradeToSeller } from '../lib/profile'
 import produce from '../assets/img/cat_produce.jpg'
 import food from '../assets/img/cat_food.jpg'
 import crafts from '../assets/img/cat_crafts.jpg'
@@ -123,6 +125,28 @@ async function remove(p) {
 }
 
 const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+
+const justAdded = ref(null)
+let toastTimer
+function add(p) {
+  addToCart(p)
+  justAdded.value = p.id
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => (justAdded.value = null), 1400)
+}
+
+const activating = ref(false)
+async function activateSeller() {
+  activating.value = true
+  try {
+    await upgradeToSeller('Local Producer & Seller')
+    await load()
+  } catch (e) {
+    alert('Error: ' + e.message)
+  } finally {
+    activating.value = false
+  }
+}
 </script>
 
 <template>
@@ -161,7 +185,17 @@ const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionD
     <div class="content">
       <div class="bar">
         <h1>{{ title }}</h1>
-        <button v-if="mine" class="btn btn-solid" id="add-product-btn" @click="openForm">+ Add Product</button>
+        <button v-if="mine && isSeller" class="btn btn-solid" id="add-product-btn" @click="openForm">+ Add Product</button>
+      </div>
+
+      <div v-if="mine && !isSeller" class="buyer-guard-banner">
+        <div>
+          <h3>🏪 Seller Account Required</h3>
+          <p>You are logged in with a Shopper account. Switch to a Seller account to list and manage products on LocalLink.</p>
+        </div>
+        <button class="btn btn-solid btn-sm" id="activate-seller-products" :disabled="activating" @click="activateSeller">
+          {{ activating ? 'Activating…' : 'Become a Seller' }}
+        </button>
       </div>
 
       <p v-if="loading">Loading…</p>
@@ -181,6 +215,9 @@ const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionD
           <span class="meta">{{ p.seller }}</span>
           <span class="meta">{{ p.location }}</span>
           <strong>{{ peso(p.price) }}<template v-if="p.unit"> / {{ p.unit }}</template></strong>
+          <button v-if="!mine" class="add" :class="{ added: justAdded === p.id }" :id="'add-' + p.id" @click="add(p)">
+            {{ justAdded === p.id ? '✓ Added to cart' : 'Add to Cart' }}
+          </button>
         </article>
       </div>
     </div>
@@ -233,6 +270,11 @@ const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionD
 
 .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; }
 .bar h1 { font-family: var(--font-body); font-size: 1.35rem; }
+
+.buyer-guard-banner { background: #fdfefe; border: 1.5px dashed var(--green); padding: 16px 20px; margin-bottom: 24px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.buyer-guard-banner h3 { margin: 0 0 4px; font-size: 1rem; color: var(--green-dark); }
+.buyer-guard-banner p { margin: 0; font-size: .8rem; font-weight: 400; opacity: .8; }
+.btn-sm { padding: 8px 16px; font-size: .8rem; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 28px 24px; }
 .card { display: flex; flex-direction: column; gap: 1px; animation: rise .45s both; }
 .pic { position: relative; aspect-ratio: 1.12; background: var(--green-light); overflow: hidden; margin-bottom: 8px; }
@@ -244,6 +286,10 @@ const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionD
 .card h3 { margin: 0; font-size: .85rem; }
 .meta { font-size: .58rem; }
 .card strong { font-size: .65rem; }
+.add { margin-top: 8px; padding: 7px 10px; border: 1.5px solid var(--green); background: #fff; color: var(--green); font-size: .72rem; transition: background .2s, color .2s, transform .15s; }
+.add:hover { background: var(--green); color: #fff; }
+.add:active { transform: scale(.96); }
+.add.added { background: var(--green); color: #fff; }
 .note { margin: 20px 0; }
 
 .overlay { position: fixed; inset: 0; background: rgba(8, 40, 24, .55); backdrop-filter: blur(3px); display: grid; place-items: center; z-index: 50; padding: 16px; }

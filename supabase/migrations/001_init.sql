@@ -19,6 +19,8 @@ create table if not exists products (
 alter table categories enable row level security;
 alter table products enable row level security;
 
+drop policy if exists "public read categories" on categories;
+drop policy if exists "public read products" on products;
 create policy "public read categories" on categories for select using (true);
 create policy "public read products" on products for select using (true);
 
