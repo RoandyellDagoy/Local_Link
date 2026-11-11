@@ -37,5 +37,3 @@ export function setQty(id, qty) {
 
 export const removeFromCart = (id) => { cart.value = cart.value.filter((i) => i.id !== id) }
 export const clearCart = () => { cart.value = [] }
-
-export const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 })

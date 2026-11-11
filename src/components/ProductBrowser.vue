@@ -5,23 +5,15 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { user } from '../lib/auth'
 import { addToCart } from '../lib/cart'
 import { isSeller, upgradeToSeller } from '../lib/profile'
-import produce from '../assets/img/cat_produce.jpg'
-import food from '../assets/img/cat_food.jpg'
-import crafts from '../assets/img/cat_crafts.jpg'
-import home from '../assets/img/cat_home.jpg'
-import fashion from '../assets/img/cat_fashion.jpg'
+import { peso } from '../lib/format'
+import { categories as allCategories } from '../lib/categories'
 
 const props = defineProps({ mine: Boolean })
 const route = useRoute()
 const router = useRouter()
 
-const categories = [
-  { slug: 'fresh-produce', name: 'Fresh Produce', image: produce },
-  { slug: 'food-beverages', name: 'Food and Beverages', image: food },
-  { slug: 'handmade-crafts', name: 'Handmade Crafts', image: crafts },
-  { slug: 'home-living', name: 'Home and Living', image: home },
-  { slug: 'fashion-accessories', name: 'Fashion and Accessories', image: fashion }
-]
+// "Other" is only a catch-all on the home page, not a browse filter
+const categories = allCategories.filter((c) => c.slug !== 'other')
 const locations = ['Dumaguete', 'Valencia', 'Sibulan', 'Bacong', 'Bonto', 'Amlan', 'San Jose', 'Others']
 
 const products = ref([])
@@ -75,12 +67,16 @@ const preview = ref('')
 const file = ref(null)
 const form = ref({ name: '', price: '', unit: '', category_slug: categories[0].slug, location: locations[0] })
 
+const editingId = ref(null)
+
 function pick(e) {
   file.value = e.target.files[0] || null
-  preview.value = file.value ? URL.createObjectURL(file.value) : ''
+  preview.value = file.value ? URL.createObjectURL(file.value) : (editingProduct.value?.image_url || '')
 }
+const editingProduct = computed(() => products.value.find((p) => p.id === editingId.value))
 
 function openForm() {
+  editingId.value = null
   form.value = { name: '', price: '', unit: '', category_slug: categories[0].slug, location: locations[0] }
   file.value = null
   preview.value = ''
@@ -88,26 +84,48 @@ function openForm() {
   showForm.value = true
 }
 
+function openEdit(p) {
+  editingId.value = p.id
+  form.value = {
+    name: p.name,
+    price: p.price,
+    unit: p.unit || '',
+    category_slug: p.category_slug || categories[0].slug,
+    location: p.location || locations[0]
+  }
+  file.value = null
+  preview.value = p.image_url || ''
+  formError.value = ''
+  showForm.value = true
+}
+
+async function uploadPhoto() {
+  const path = `${user.value.id}/${Date.now()}-${file.value.name.replace(/[^\w.-]/g, '_')}`
+  const { error: upErr } = await supabase.storage.from('product-images').upload(path, file.value)
+  if (upErr) throw upErr
+  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl
+}
+
 async function save() {
   formError.value = ''
   saving.value = true
   try {
-    let image_url = null
-    if (file.value) {
-      const path = `${user.value.id}/${Date.now()}-${file.value.name.replace(/[^\w.-]/g, '_')}`
-      const { error: upErr } = await supabase.storage.from('product-images').upload(path, file.value)
-      if (upErr) throw upErr
-      image_url = supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl
+    const fields = { ...form.value, price: Number(form.value.price) }
+    // Only touch image_url when a new photo was chosen, so editing never removes an existing photo
+    if (file.value) fields.image_url = await uploadPhoto()
+    if (editingId.value) {
+      const { error: updErr } = await supabase.from('products').update(fields).eq('id', editingId.value).eq('owner_id', user.value.id)
+      if (updErr) throw updErr
+    } else {
+      const seller = user.value.user_metadata?.full_name || user.value.email
+      const { error: insErr } = await supabase.from('products').insert({
+        ...fields,
+        image_url: fields.image_url ?? null,
+        seller,
+        owner_id: user.value.id
+      })
+      if (insErr) throw insErr
     }
-    const seller = user.value.user_metadata?.full_name || user.value.email
-    const { error: insErr } = await supabase.from('products').insert({
-      ...form.value,
-      price: Number(form.value.price),
-      image_url,
-      seller,
-      owner_id: user.value.id
-    })
-    if (insErr) throw insErr
     showForm.value = false
     await load()
   } catch (e) {
@@ -124,11 +142,13 @@ async function remove(p) {
   products.value = products.value.filter((x) => x.id !== p.id)
 }
 
-const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 })
-
 const justAdded = ref(null)
 let toastTimer
 function add(p) {
+  if (!user.value) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
   addToCart(p)
   justAdded.value = p.id
   clearTimeout(toastTimer)
@@ -139,7 +159,7 @@ const activating = ref(false)
 async function activateSeller() {
   activating.value = true
   try {
-    await upgradeToSeller('Local Producer & Seller')
+    await upgradeToSeller()
     await load()
   } catch (e) {
     alert('Error: ' + e.message)
@@ -210,6 +230,7 @@ async function activateSeller() {
             <img v-if="p.image_url" :src="p.image_url" :alt="p.name" loading="lazy" />
             <div v-else class="noimg">No photo</div>
             <button v-if="mine" class="del" aria-label="Delete product" @click="remove(p)">✕</button>
+            <button v-if="mine" class="edit" :id="'edit-' + p.id" aria-label="Edit product" @click="openEdit(p)">✎ {{ p.image_url ? 'Edit' : 'Add photo / Edit' }}</button>
           </div>
           <h3>{{ p.name }}</h3>
           <span class="meta">{{ p.seller }}</span>
@@ -225,7 +246,7 @@ async function activateSeller() {
     <Transition name="fade">
       <div v-if="showForm" class="overlay" @click.self="showForm = false">
         <form class="modal" @submit.prevent="save">
-          <h2>Add New Product</h2>
+          <h2>{{ editingId ? 'Edit Product' : 'Add New Product' }}</h2>
           <label>Product name<input id="p-name" v-model="form.name" required /></label>
           <div class="row">
             <label>Price (₱)<input id="p-price" v-model="form.price" type="number" min="0" step="0.01" required /></label>
@@ -244,7 +265,7 @@ async function activateSeller() {
           <p v-if="formError" class="err">{{ formError }}</p>
           <div class="actions">
             <button type="button" class="btn btn-outline" @click="showForm = false">Cancel</button>
-            <button class="btn btn-solid" id="save-product" :disabled="saving">{{ saving ? 'Saving…' : 'Save Product' }}</button>
+            <button class="btn btn-solid" id="save-product" :disabled="saving">{{ saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Product' }}</button>
           </div>
         </form>
       </div>
@@ -283,6 +304,8 @@ async function activateSeller() {
 .noimg { height: 100%; display: grid; place-items: center; font-size: .75rem; opacity: .6; }
 .del { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: #c92a2a; opacity: 0; transition: opacity .2s; }
 .card:hover .del { opacity: 1; }
+.edit { position: absolute; left: 6px; bottom: 6px; border: 0; background: rgba(255,255,255,.95); color: var(--green); font-size: .62rem; padding: 4px 8px; border-radius: 999px; }
+.edit:hover { background: var(--green); color: #fff; }
 .card h3 { margin: 0; font-size: .85rem; }
 .meta { font-size: .58rem; }
 .card strong { font-size: .65rem; }

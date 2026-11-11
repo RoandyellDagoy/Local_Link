@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { user } from '../lib/auth'
 import { profile } from '../lib/profile'
-import { cart, subtotal, clearCart, peso, DELIVERY_FEE } from '../lib/cart'
+import { cart, subtotal, clearCart, DELIVERY_FEE } from '../lib/cart'
+import { peso } from '../lib/format'
 
 const router = useRouter()
 

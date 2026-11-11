@@ -4,8 +4,23 @@ import { user } from './auth'
 
 export const profile = ref(null)
 
+// One place that describes each role (labels, default headline, landing page)
+export const ROLES = {
+  buyer: { label: 'Shopper', headline: 'Shopper', dashboard: 'Shopper Dashboard', home: '/profile' },
+  seller: { label: 'Seller', headline: 'Seller', dashboard: 'Seller Dashboard', home: '/profile' },
+  admin: { label: 'Admin', headline: 'Administrator', dashboard: 'Admin Dashboard', home: '/admin' }
+}
+export const roleInfo = (role) => ROLES[role] || ROLES.buyer
+
+export async function fetchRole(uid) {
+  if (!uid) return null
+  const { data } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle()
+  return data?.role ?? null
+}
+
 export const isSeller = computed(() => profile.value?.role === 'seller')
-export const isBuyer = computed(() => !isSeller.value)
+export const isAdmin = computed(() => profile.value?.role === 'admin')
+export const isBuyer = computed(() => !isSeller.value && !isAdmin.value)
 
 async function load() {
   const u = user.value
@@ -13,12 +28,13 @@ async function load() {
   const { data } = await supabase.from('profiles').select('*').eq('id', u.id).maybeSingle()
   if (data) { profile.value = data; return }
   // Fallback for accounts created before the profiles table existed
-  const role = u.user_metadata?.role || 'buyer'
+  const metaRole = u.user_metadata?.role
+  const role = metaRole === 'seller' ? 'seller' : 'buyer' // admin is only granted server-side
   const fresh = {
     id: u.id,
     full_name: u.user_metadata?.full_name || '',
     role,
-    headline: role === 'seller' ? 'Seller' : 'Shopper'
+    headline: roleInfo(role).headline
   }
   const { data: created } = await supabase.from('profiles').upsert(fresh).select().maybeSingle()
   profile.value = created || fresh
@@ -48,7 +64,7 @@ export async function saveProfile(patch, avatarFile) {
   if (Object.keys(meta).length) await supabase.auth.updateUser({ data: meta })
 }
 
-export async function upgradeToSeller(headline = 'Seller & Producer') {
+export async function upgradeToSeller(headline = 'Local Producer & Seller') {
   await saveProfile({ role: 'seller', headline: headline || 'Seller' })
 }
 

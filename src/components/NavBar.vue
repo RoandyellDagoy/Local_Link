@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { user } from '../lib/auth'
 import { cartCount } from '../lib/cart'
-import { profile } from '../lib/profile'
+import { profile, roleInfo } from '../lib/profile'
 
 const router = useRouter()
 const q = ref('')
@@ -54,10 +54,10 @@ const listen = () => {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6" /><circle cx="9.5" cy="20" r="1.4" /><circle cx="17.5" cy="20" r="1.4" /></svg>
           <span v-if="cartCount" class="badge" :key="cartCount">{{ cartCount }}</span>
         </router-link>
-        <router-link v-if="user" to="/profile" id="profile-link" class="avatar-icon" :title="profile?.role === 'seller' ? 'Seller Dashboard' : 'Shopper Dashboard'">
+        <router-link v-if="user" :to="roleInfo(profile?.role).home" id="profile-link" class="avatar-icon" :title="roleInfo(profile?.role).dashboard">
           <img v-if="profile?.avatar_url" :src="profile.avatar_url" alt="" class="nav-avatar" />
           <svg v-else width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="10" r="3.4" /><path d="M5.5 19c1.5-3 4-4.2 6.5-4.2s5 1.2 6.5 4.2" /></svg>
-          <span v-if="profile?.role" class="nav-role-tag" :class="profile.role">{{ profile.role === 'seller' ? 'Seller' : 'Shopper' }}</span>
+          <span v-if="profile?.role" class="nav-role-tag" :class="profile.role">{{ roleInfo(profile.role).label }}</span>
         </router-link>
         <template v-else>
           <router-link to="/login" id="login-link">Login</router-link> | <router-link to="/login?mode=signup" id="signup-link">Sign Up</router-link>
@@ -92,8 +92,10 @@ const listen = () => {
 .nav-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--green); }
 .nav-role-tag { font-size: .62rem; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; letter-spacing: .02em; }
 .nav-role-tag.seller { background: var(--green); color: #fff; }
+.nav-role-tag.admin { background: var(--green-dark); color: #fff; }
 .nav-role-tag.buyer { background: var(--green-light); color: var(--green-dark); }
 .who { display: none; }
 @media (max-width: 1000px) { .links { display: none; } }
 @media (max-width: 700px) { .search { display: none; } }
 </style>
+

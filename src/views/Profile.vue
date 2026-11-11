@@ -2,8 +2,10 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
-import { user, signOut } from '../lib/auth'
+import { user, logout as signOutAndHome } from '../lib/auth'
+import StatCard from '../components/StatCard.vue'
 import { profile, isSeller, isBuyer, saveProfile, upgradeToSeller, downgradeToBuyer } from '../lib/profile'
+import { peso, compact, change, niceMax } from '../lib/format'
 
 const router = useRouter()
 
@@ -22,8 +24,7 @@ watch(isSeller, (seller) => {
 const sellerMenu = [
   { label: 'Seller Dashboard', action: () => (viewMode.value = 'seller'), icon: 'M3 11l9-8 9 8v10h-6v-6H9v6H3z', active: () => viewMode.value === 'seller' },
   { label: 'My Products', to: '/profile/products', icon: 'M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10' },
-  { label: 'Customer Orders', action: () => (viewMode.value = 'seller'), icon: 'M6 3h12v18H6zM9 8h6M9 12h6M9 16h4', active: () => false },
-  { label: 'My Purchases', action: () => (viewMode.value = 'buyer'), icon: 'M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6', active: () => viewMode.value === 'buyer' },
+  { label: 'Customer Orders', to: '/profile/orders', icon: 'M6 3h12v18H6zM9 8h6M9 12h6M9 16h4' },
   { label: 'Learning Hub', to: '/learn', icon: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 0 0-4-10z' }
 ]
 
@@ -115,14 +116,6 @@ const orderCount = (arr) => new Set(arr.map((i) => i.order_id)).size
 const thisMonth = computed(() => live.value.filter((i) => inRange(i, monthStart(0), monthStart(1))))
 const lastMonth = computed(() => live.value.filter((i) => inRange(i, monthStart(-1), monthStart(0))))
 
-const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 })
-
-function change(cur, prev) {
-  if (!prev) return cur ? { text: 'New this month', up: true } : { text: 'No data yet', up: null }
-  const pct = Math.round(((cur - prev) / prev) * 100)
-  return { text: `${Math.abs(pct)}% from last month`, up: pct >= 0 }
-}
-
 const pendingCount = computed(() => orderCount(items.value.filter((i) => i.status === 'Pending')))
 const balance = computed(() => sum(items.value.filter((i) => i.status === 'Delivered')))
 
@@ -143,13 +136,23 @@ const rangeLabel = computed(() => {
 })
 
 /* ---------- buyer metrics ---------- */
+// Derive effective order status from items if present so multi-seller or freshly-updated items always reflect
+function orderStatus(o) {
+  const list = o.order_items || []
+  if (!list.length) return o.status || 'Pending'
+  const active = list.filter((i) => i.status !== 'Cancelled')
+  if (!active.length) return 'Cancelled'
+  if (active.every((i) => i.status === 'Delivered')) return 'Delivered'
+  return 'Pending'
+}
+
 const buyerTotalSpent = computed(() =>
   buyerOrders.value
-    .filter((o) => o.status !== 'Cancelled')
+    .filter((o) => orderStatus(o) !== 'Cancelled')
     .reduce((acc, o) => acc + Number(o.total), 0)
 )
 const buyerPendingOrders = computed(() =>
-  buyerOrders.value.filter((o) => o.status === 'Pending').length
+  buyerOrders.value.filter((o) => orderStatus(o) === 'Pending').length
 )
 
 /* ---------- chart: last 6 months (seller) ---------- */
@@ -160,15 +163,9 @@ const months = computed(() =>
     return { label: start.toLocaleString('en-US', { month: 'short' }), total: sum(live.value.filter((i) => inRange(i, start, end))) }
   })
 )
-const niceMax = computed(() => {
-  const max = Math.max(...months.value.map((m) => m.total), 0)
-  if (!max) return 100
-  const pow = 10 ** Math.floor(Math.log10(max))
-  return Math.ceil(max / pow) * pow
-})
-const ticks = computed(() => [0, 1, 2, 3, 4].map((n) => (niceMax.value / 4) * n))
-const compact = (n) => (n >= 1000 ? `${+(n / 1000).toFixed(1)}k` : String(Math.round(n)))
-const pts = computed(() => months.value.map((m, i) => [40 + i * 108, 170 - (m.total / niceMax.value) * 164]))
+const niceMaxValue = computed(() => niceMax(Math.max(...months.value.map((m) => m.total), 0)))
+const ticks = computed(() => [0, 1, 2, 3, 4].map((n) => (niceMaxValue.value / 4) * n))
+const pts = computed(() => months.value.map((m, i) => [40 + i * 108, 170 - (m.total / niceMaxValue.value) * 164]))
 const path = computed(() => pts.value.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' '))
 
 /* ---------- seller recent orders ---------- */
@@ -235,7 +232,7 @@ async function handleUpgrade() {
   if (!confirm('Would you like to activate your Seller account? This will grant you access to the Seller Dashboard and allow you to list and sell products on LocalLink.')) return
   upgrading.value = true
   try {
-    await upgradeToSeller('Local Producer & Seller')
+    await upgradeToSeller()
     viewMode.value = 'seller'
     refreshAll()
   } catch (e) {
@@ -245,10 +242,7 @@ async function handleUpgrade() {
   }
 }
 
-async function logout() {
-  await signOut()
-  router.push('/')
-}
+const logout = () => signOutAndHome(router)
 </script>
 
 <template>
@@ -325,13 +319,7 @@ async function logout() {
         <p v-if="loadError" class="err">{{ loadError }}</p>
 
         <div class="stats">
-          <div v-for="s in stats" :key="s.label" class="stat">
-            <span class="lbl">{{ s.label }}</span>
-            <strong>{{ s.value }}</strong>
-            <small :class="{ down: s.up === false, up: s.up === true }">
-              <template v-if="s.up === true">↑ </template><template v-else-if="s.up === false">↓ </template>{{ s.note }}
-            </small>
-          </div>
+          <StatCard v-for="s in stats" :key="s.label" :label="s.label" :value="s.value" :note="s.note" :up="s.up" />
         </div>
 
         <div class="lower">
@@ -351,7 +339,7 @@ async function logout() {
           <div class="orders">
             <div class="orders-head">
               <h2>Recent Customer Orders</h2>
-              <a href="#" @click.prevent="showAll = !showAll">{{ showAll ? '↑ Show Less' : '→ View All' }}</a>
+              <router-link to="/profile/orders">→ View All</router-link>
             </div>
             <p v-if="loading" class="muted">Loading…</p>
             <p v-else-if="!items.length" class="muted">No orders yet. They will appear here when customers purchase your products.</p>
@@ -388,21 +376,9 @@ async function logout() {
 
         <!-- Buyer Stats -->
         <div class="stats buyer-stats">
-          <div class="stat">
-            <span class="lbl">Total Spent</span>
-            <strong>{{ peso(buyerTotalSpent) }}</strong>
-            <small>Across all completed orders</small>
-          </div>
-          <div class="stat">
-            <span class="lbl">Orders Placed</span>
-            <strong>{{ buyerOrders.length }}</strong>
-            <small>Lifetime orders on LocalLink</small>
-          </div>
-          <div class="stat">
-            <span class="lbl">Active Deliveries</span>
-            <strong>{{ buyerPendingOrders }}</strong>
-            <small :class="{ down: buyerPendingOrders > 0 }">{{ buyerPendingOrders ? 'Awaiting arrival' : 'None active' }}</small>
-          </div>
+          <StatCard label="Total Spent" :value="peso(buyerTotalSpent)" note="Across all completed orders" />
+          <StatCard label="Orders Placed" :value="buyerOrders.length" note="Lifetime orders on LocalLink" />
+          <StatCard label="Active Deliveries" :value="buyerPendingOrders" :note="buyerPendingOrders ? 'Awaiting arrival' : 'None active'" :up="buyerPendingOrders ? false : null" />
         </div>
 
         <!-- Orders Section -->
@@ -423,8 +399,8 @@ async function logout() {
                 </div>
                 <div class="order-tags">
                   <span class="pay-badge">{{ ord.payment_method }}</span>
-                  <span class="status-pill" :class="'st-' + (ord.status || 'pending').toLowerCase()">
-                    {{ ord.status || 'Pending' }}
+                  <span class="status-pill" :class="'st-' + orderStatus(ord).toLowerCase()">
+                    {{ orderStatus(ord) }}
                   </span>
                 </div>
               </div>
@@ -540,13 +516,6 @@ async function logout() {
 .range { font-size: 1.4rem; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 22px 0 32px; }
 .buyer-stats { grid-template-columns: repeat(3, 1fr); }
-.stat { border: 1px solid var(--green); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; transition: transform .25s, box-shadow .25s; }
-.stat:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,104,56,.18); }
-.lbl { font-size: .85rem; }
-.stat strong { font-size: 1.4rem; }
-.stat small { font-size: .62rem; font-weight: 400; }
-.stat small.down { color: #e03131; }
-.stat small.up { color: var(--green-dark); }
 
 .lower { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; }
 .lower h2 { font-size: 1.4rem; margin-bottom: 8px; }

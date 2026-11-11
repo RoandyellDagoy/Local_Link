@@ -1,29 +1,16 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import produce from '../assets/img/cat_produce.jpg'
-import food from '../assets/img/cat_food.jpg'
-import crafts from '../assets/img/cat_crafts.jpg'
-import home from '../assets/img/cat_home.jpg'
-import fashion from '../assets/img/cat_fashion.jpg'
-import other from '../assets/img/cat_other.jpg'
+import { categories as localCategories, categoryImage } from '../lib/categories'
 import hero from '../assets/img/hero_market.jpg'
 
 // Local fallback; replaced by the `categories` table when Supabase is configured.
-const categories = ref([
-  { slug: 'fresh-produce', name: 'Fresh Produce', image: produce },
-  { slug: 'food-beverages', name: 'Food and Beverages', image: food },
-  { slug: 'handmade-crafts', name: 'Handmade Crafts', image: crafts },
-  { slug: 'home-living', name: 'Home and Living', image: home },
-  { slug: 'fashion-accessories', name: 'Fashion and Accessories', image: fashion },
-  { slug: 'other', name: 'Other Products', image: other }
-])
-const fallback = Object.fromEntries(categories.value.map((c) => [c.slug, c.image]))
+const categories = ref(localCategories)
 
 onMounted(async () => {
   if (!isSupabaseConfigured) return
   const { data } = await supabase.from('categories').select('slug,name,image_url').order('sort_order')
-  if (data?.length) categories.value = data.map((c) => ({ ...c, image: c.image_url || fallback[c.slug] || other }))
+  if (data?.length) categories.value = data.map((c) => ({ ...c, image: c.image_url || categoryImage(c.slug) }))
 })
 </script>
 

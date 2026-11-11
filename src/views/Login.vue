@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { fetchRole, roleInfo } from '../lib/profile'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +35,9 @@ async function submit() {
   if (error) { msg.value = error.message; return }
   // A session only exists right away when "Confirm email" is turned off in Supabase.
   if (signup.value && !data.session) { msg.value = 'Check your email to confirm your account.'; return }
-  router.push(route.query.redirect || '/profile')
+  const uid = data.user?.id ?? data.session?.user?.id
+  const home = roleInfo(await fetchRole(uid)).home
+  router.push(home === '/admin' ? home : route.query.redirect || home)
 }
 </script>
 
@@ -68,6 +71,17 @@ async function submit() {
               <strong>Seller</strong>
               <small>Sell products & manage shop</small>
             </button>
+            <button
+              type="button"
+              class="role-card"
+              :class="{ on: role === 'admin' }"
+              id="role-admin"
+              @click="role = 'admin'"
+            >
+              <span class="emoji">🛡️</span>
+              <strong>Admin</strong>
+              <small>Manage sellers & customers</small>
+            </button>
           </div>
         </label>
         <label>Full name<input id="full-name" v-model="fullName" type="text" required autocomplete="name" placeholder="e.g. Maria Santos" /></label>
@@ -84,7 +98,7 @@ async function submit() {
         </span>
       </label>
 
-      <button class="btn btn-solid" id="auth-submit" :disabled="busy">{{ busy ? 'Please wait…' : signup ? `Create ${role === 'seller' ? 'Seller' : 'Buyer'} Account` : 'Login' }}</button>
+      <button class="btn btn-solid" id="auth-submit" :disabled="busy">{{ busy ? 'Please wait…' : signup ? `Create ${role === 'seller' ? 'Seller' : role === 'admin' ? 'Admin' : 'Buyer'} Account` : 'Login' }}</button>
       <p v-if="msg" class="msg">{{ msg }}</p>
       <router-link :to="signup ? '/login' : '/login?mode=signup'" class="switch">
         {{ signup ? 'Already have an account? Login' : 'New here? Sign Up' }}
@@ -98,7 +112,7 @@ async function submit() {
 .box h1 { font-size: 2.4rem; }
 label { display: flex; flex-direction: column; gap: 6px; font-size: .95rem; }
 
-.role-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.role-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
 .role-card { border: 1.5px solid var(--green-light); background: #fff; padding: 12px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: all .2s; }
 .role-card .emoji { font-size: 1.4rem; }
 .role-card strong { font-size: .95rem; color: var(--green-dark); }
@@ -115,3 +129,5 @@ input:focus { box-shadow: 0 0 0 3px rgba(0,104,56,.18); }
 .msg { margin: 0; color: var(--ink); font-size: .9rem; }
 .switch { font-size: .9rem; text-decoration: underline; }
 </style>
+
+

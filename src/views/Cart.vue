@@ -1,5 +1,6 @@
 <script setup>
-import { cart, subtotal, setQty, removeFromCart, peso } from '../lib/cart'
+import { cart, subtotal, setQty, removeFromCart } from '../lib/cart'
+import { peso } from '../lib/format'
 </script>
 
 <template>
