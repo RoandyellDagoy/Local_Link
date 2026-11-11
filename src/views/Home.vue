@@ -64,4 +64,8 @@ onMounted(async () => {
   .hero { grid-template-columns: 1fr; }
   .cats ul { grid-template-columns: repeat(3, 1fr); }
 }
+@media (max-width: 520px) {
+  .cats ul { grid-template-columns: repeat(2, 1fr); }
+  .cta { flex-wrap: wrap; }
+}
 </style>

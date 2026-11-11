@@ -69,4 +69,5 @@ h1 { font-family: var(--font-body); font-size: 1.8rem; margin: 12px 0 22px; }
 .sum .btn { text-align: center; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .sum { position: static; } }
+@media (max-width: 520px) { .items li { flex-wrap: wrap; } .info { min-width: calc(100% - 80px); } .qty { margin-left: auto; } }
 </style>

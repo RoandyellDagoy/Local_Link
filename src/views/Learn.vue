@@ -67,4 +67,5 @@ h1 { font-family: var(--font-body); font-size: 2rem; font-weight: 700; }
 .start:hover { background: var(--green-dark); transform: scale(1.06); }
 .empty { margin-top: 20px; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (max-width: 520px) { .list li { flex-wrap: wrap; } .start { margin-left: auto; } }
 </style>

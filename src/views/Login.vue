@@ -128,6 +128,7 @@ input { padding: 10px 12px; border: 1.5px solid var(--green); font: inherit; out
 input:focus { box-shadow: 0 0 0 3px rgba(0,104,56,.18); }
 .msg { margin: 0; color: var(--ink); font-size: .9rem; }
 .switch { font-size: .9rem; text-decoration: underline; }
+@media (max-width: 480px) { .role-picker { grid-template-columns: 1fr; } }
 </style>
 
 

@@ -380,4 +380,7 @@ th { background: var(--green-light); }
 .title-row h1 { margin-bottom: 0; }
 .err { color: #e03131; }
 @media (max-width: 900px) { .admin { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; } .side nav { flex-direction: row; flex-wrap: wrap; } }
+@media (max-width: 700px) { table { display: block; overflow-x: auto; white-space: nowrap; } }
+@media (max-width: 600px) { .content { padding: 14px 16px; } .top { flex-wrap: wrap; } .search { order: 3; flex-basis: 100%; max-width: none; } .quick { margin-left: 0; justify-content: center; } }
+@media (max-width: 600px) { .content { padding: 14px 16px; } .top { flex-wrap: wrap; } .search { order: 3; flex-basis: 100%; max-width: none; } .quick { margin-left: 0; justify-content: center; } }
 </style>

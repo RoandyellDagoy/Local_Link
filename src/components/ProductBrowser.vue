@@ -328,4 +328,6 @@ async function activateSeller() {
 
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (max-width: 800px) { .browser { grid-template-columns: 1fr; } }
+@media (hover: none) { .del { opacity: 1; } }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
 </style>

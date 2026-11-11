@@ -7,6 +7,7 @@ import { profile, roleInfo } from '../lib/profile'
 
 const router = useRouter()
 const q = ref('')
+const open = ref(false)
 const links = [
   { to: '/', label: 'Home' },
   { to: '/shop', label: 'Shop' },
@@ -15,7 +16,10 @@ const links = [
   { to: '/about', label: 'About' }
 ]
 
-const search = () => router.push({ path: '/shop', query: q.value ? { q: q.value } : {} })
+const search = () => {
+  open.value = false
+  router.push({ path: '/shop', query: q.value ? { q: q.value } : {} })
+}
 
 const listen = () => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -62,7 +66,20 @@ const listen = () => {
         <template v-else>
           <router-link to="/login" id="login-link">Login</router-link> | <router-link to="/login?mode=signup" id="signup-link">Sign Up</router-link>
         </template>
+        <button type="button" id="mobile-menu-btn" class="burger" :aria-label="open ? 'Close menu' : 'Open menu'" @click="open = !open">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path v-if="!open" d="M3 6h18M3 12h18M3 18h18" /><path v-else d="M6 6l12 12M6 18L18 6" /></svg>
+        </button>
       </div>
+    </div>
+
+    <div v-if="open" class="container mobile-drawer">
+      <form class="search mobile-search" role="search" @submit.prevent="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+        <input v-model="q" type="search" placeholder="Search for products, sellers, or categories...." aria-label="Search" />
+      </form>
+      <nav class="mobile-links" aria-label="Mobile">
+        <router-link v-for="l in links" :key="l.to" :to="l.to" @click="open = false">{{ l.label }}</router-link>
+      </nav>
     </div>
   </header>
 </template>
@@ -95,7 +112,20 @@ const listen = () => {
 .nav-role-tag.admin { background: var(--green-dark); color: #fff; }
 .nav-role-tag.buyer { background: var(--green-light); color: var(--green-dark); }
 .who { display: none; }
-@media (max-width: 1000px) { .links { display: none; } }
-@media (max-width: 700px) { .search { display: none; } }
+.burger { display: none; border: 0; background: none; color: var(--green); padding: 4px; }
+.mobile-drawer { display: none; flex-direction: column; gap: 12px; padding-top: 8px; padding-bottom: 16px; border-top: 1px solid var(--green-light); }
+.mobile-links { display: flex; flex-direction: column; gap: 10px; font-size: .95rem; }
+.mobile-search { max-width: none; }
+@media (max-width: 1000px) {
+  .links { display: none; }
+  .burger { display: flex; }
+  .mobile-drawer { display: flex; }
+}
+@media (max-width: 700px) {
+  .nav-inner > .search { display: none; }
+  .nav-inner { gap: 12px; }
+  .brand { font-size: 1.55rem; }
+  .nav-role-tag { display: none; }
+}
 </style>
 

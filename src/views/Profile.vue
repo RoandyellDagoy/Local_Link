@@ -586,9 +586,14 @@ const logout = () => signOutAndHome(router)
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @media (max-width: 950px) {
   .dash { grid-template-columns: 1fr; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats, .buyer-stats { grid-template-columns: repeat(2, 1fr); }
   .lower { grid-template-columns: 1fr; }
   .order-card-body { grid-template-columns: 1fr; }
   .order-meta-info { border-left: 0; border-top: 1px solid var(--green-light); padding-left: 0; padding-top: 12px; }
+}
+@media (max-width: 520px) {
+  .stats, .buyer-stats { grid-template-columns: 1fr; }
+  .head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .order-card-header { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 </style>
