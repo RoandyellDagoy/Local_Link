@@ -39,13 +39,11 @@ const quick = computed(() => {
     return [
       { label: 'Add New Product', to: '/profile/products' },
       { label: 'Check Sales Report', to: '/profile' },
-      { label: 'View Financing Options', to: '/financing' },
       { label: 'Visit Learning Hub', to: '/learn' }
     ]
   }
   return [
     { label: 'Browse Local Shop', to: '/shop' },
-    { label: 'Explore Financing', to: '/financing' },
     { label: 'Visit Learning Hub', to: '/learn' }
   ]
 })

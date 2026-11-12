@@ -11,7 +11,6 @@ const open = ref(false)
 const links = [
   { to: '/', label: 'Home' },
   { to: '/shop', label: 'Shop' },
-  { to: '/financing', label: 'Financing' },
   { to: '/learn', label: 'Learn' },
   { to: '/about', label: 'About' }
 ]

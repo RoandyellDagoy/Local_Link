@@ -29,7 +29,6 @@ const router = createRouter({
     { path: '/profile/orders', component: SellerOrders, meta: { auth: true } },
     { path: '/admin', component: Admin, meta: { auth: true, admin: true } },
     { path: '/profile/products', component: ProductBrowser, props: { mine: true }, meta: { auth: true } },
-    { path: '/financing', component: InfoPage, props: { title: 'Financing', text: 'Micro-loans and flexible payment options to help local sellers grow and shoppers support them.' } },
     { path: '/learn', component: Learn },
     { path: '/learn/:id', component: Lesson },
     { path: '/about', component: InfoPage, props: { title: 'About', text: 'LocalLink connects communities with the farmers, artisans, and small businesses around them.' } }
